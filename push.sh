@@ -1,16 +1,16 @@
 #!/bin/bash
 # Giovix92 was here, 15/04/2021, 13:56 GMT+1
-set -e
+# Version: 1.1
 a=()
-mainpath=$(pwd)
-devices_dir=$(pwd)/official_devices
-ota_scripts=$(pwd)/ota_scripts
+mainpath="$(pwd)"
+devices_dir="$(pwd)/official_devices"
+ota_scripts="$(pwd)/ota_scripts"
 
 checkchangelog() {
     if [ ! -f "$(pwd)/changelog.txt" ]; then
         echo "Create changelog.txt file in build directory"
         echo "Aborting..."
-        return 1
+        exit
     else
         return 0
     fi
@@ -25,7 +25,7 @@ checkconfig() {
 }
 
 checkupload() {
-    if [ ! -e $(pwd)/RevengeOS*${target_device}*.zip ]; then
+    if [ -e $(pwd)/RevengeOS*${target_device}*.zip ]; then
         return 0
     else
         return 1
@@ -44,12 +44,13 @@ auto_process() {
         echo "target_device not exported, aborting."
         return 0
     fi
-    echo "Picking automatically the newer zip file..."
-    zipname=$(ls -t *.zip | head -n1)
+    if checkupload; then
+        echo "Picking automatically the newer zip file..."
+        zipname=$(ls -t *.zip | head -n1)
+    fi
 }
 
 manual() {
-    # Ask the maintainer for login details
     read -p 'Sourceforge Username: ' uservar
     read -p 'Insert your device codename: ' target_device
     if [ "$target_device" == "" ]; then
@@ -60,7 +61,7 @@ manual() {
 
 checkremotedir() {
     echo "Checking if remote device folder exists."
-    if sftp ${uservar}@frs.sourceforge.net:/home/frs/project/revengeos/${target_device} <<< $'!'; then
+    if echo "$ssh_password" | sftp ${uservar}@frs.sourceforge.net:/home/frs/project/revengeos/${target_device} <<< $'!'; then
         echo "Exists! Proceeding."
     else
         echo "Does not exist. Creating one."
@@ -89,6 +90,7 @@ trigger() {
     rm -rf $ota_scripts
 }
 
+checkchangelog
 
 if checkconfig; then
     auto_process
@@ -97,11 +99,11 @@ else
 fi
 
 if checkupload; then
+    zipname=$(ls -t RevengeOS*${target_device}*.zip)
+else
     read -p 'Enter the zip filename here: ' zipname
     echo "Your file zip will be now downloaded from ROS server. Please, be patient."
-    wget http://files.revengeos.com/${target_device}/${zipname}
-else
-    zipname=$(ls -t RevengeOS*${target_device}*.zip)
+    wget -q --show-progress http://files.revengeos.com/${target_device}/${zipname}
 fi
 
 if [ "$zipname" == "" ]; then
@@ -115,8 +117,8 @@ do
 done
 
 version=${a[1]}
-size=$(stat -c%s "$out_dir/$zipname")
-md5=$(md5sum "$out_dir/$zipname")
+size=$(stat -c%s "$zipname")
+md5=$(md5sum "$zipname")
 
 echo -n "Do you want to upload it to SourceForge? (y/n) "
 read zipupload_choice
