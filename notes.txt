@@ -1,0 +1,4 @@
+Clean flash recommended
+SeLinux is Enforcing
+CTS passes as usual
+To enable multi touch (more than 3 fingers) read #multitouch note in discussion grp : @stormbreaker_vince
